@@ -10,6 +10,9 @@
 #define COLOR_ORDER GRB
 #define PIXEL_RANDOMIZED 4
 
+#define MEM_ADDR_BRIGHT 0
+#define MEM_ADDR_MODE 1
+
 //ARGB
 byte argb_rainbow_counter;
 
@@ -30,6 +33,13 @@ volatile boolean btnFlag1 = false;   // флаг1
 void setup() {
   Serial.begin(9600);
   while (!Serial);
+
+  //MEMORY
+  BRIGHTNESS = eeprom_read_byte(MEM_ADDR_BRIGHT);
+  if (eeprom_read_byte(MEM_ADDR_MODE) > 8) { // первый запуск
+    eeprom_write_byte(MEM_ADDR_MODE, argb_mode_counter);
+  }
+  argb_mode_counter = eeprom_read_byte(1);
   
   pinMode(13, OUTPUT); //DEBUG INTERNAL LED
   pinMode(2, INPUT_PULLUP); //Button on D2
@@ -62,17 +72,22 @@ void loop() {
   //   * * *   SERIAL PORT   * * * 
   
   if (Serial.available()){
+    
     int state = Serial.parseInt();
+    
     if (state == 111){
       FastLED.setBrightness(BRIGHTNESS_LATEST);
       //digitalWrite(13, HIGH);
+      eeprom_write_byte(MEM_ADDR_BRIGHT, BRIGHTNESS_LATEST); //MEMORY
       Serial.println("Command completed LED turned ON");
       state = 0;
       }
+      
     if (state == 110){
       BRIGHTNESS_LATEST = BRIGHTNESS;
       FastLED.setBrightness(0);
       //digitalWrite(13, LOW);
+      eeprom_write_byte(MEM_ADDR_BRIGHT, 0); //MEMORY
       Serial.println("Command completed LED turned OFF");
       state = 0;
       }
@@ -80,6 +95,7 @@ void loop() {
     if (state >= 201 && state <= 208){
       int res = state - 200;
       if (res > 0 && res <= 8) argb_mode_counter = res;
+      eeprom_write_byte(MEM_ADDR_MODE, res); //MEMORY
       Serial.println("Command completed ");
       state = 0;
       }
@@ -89,6 +105,7 @@ void loop() {
       if (res >= 0 && res <= 4) {
         BRIGHTNESS = BRIGHTNESS_LEVEVS[res];
         FastLED.setBrightness(BRIGHTNESS);
+        eeprom_write_byte(MEM_ADDR_BRIGHT, BRIGHTNESS); //MEMORY
       }
       Serial.println("Command completed ");
       state = 0;
